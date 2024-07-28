@@ -9,7 +9,7 @@ local function toggleNuiFrame(shouldShow)
     SetNuiFocus(shouldShow, shouldShow)
     SendReactMessage('setVisible', shouldShow)
 end
-print(ESX.PlayerData.job.grade)
+
 if Config.UseCommand then
     RegisterCommand('bossmenu', function()
         if Config.Framework == 'qbcore' then
@@ -202,7 +202,7 @@ RegisterNuiCallback('Acceptemployee', function(data, cb)
 end)
 
 RegisterNuiCallback('OpenBossOutfits', function(data, cb)
-    TriggerEvent('illenium-appearance:client:OutfitManagementMenu')
+    TriggerEvent('illenium-appearance:client:OutfitManagementMenu', { type = 'Job' })
     cb(true)
 end)
 

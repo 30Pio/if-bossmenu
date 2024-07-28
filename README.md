@@ -40,11 +40,11 @@ This will create a application to particular business and Employers can hire you
 - /bill [targetId] [amount]
 To bill someone only for employees
 
+- /getbills [type  personal/company]
+    - personal will fectch your personal bills
+    - company will fetch your all pending bills
 
 ## Support
 
 If you found any bugs/errors please open ticket on our discord channel : https://discord.gg/if-developments
-- /getbills [type  personal/company]
-    - personal will fectch your personal bills
-    - company will fetch your all pending bills
 

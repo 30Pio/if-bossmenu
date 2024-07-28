@@ -1,7 +1,7 @@
 if Config.Framework ~= 'qbcore' then
-    ESX = exports['es_extended']:getSharedObject()
-else
     QBCore = exports['qb-core']:GetCoreObject()
+else
+    ESX = exports['es_extended']:getSharedObject()
 end
 
 function Notify(source, message, type)

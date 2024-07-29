@@ -13,7 +13,9 @@ Config.RealJob = {
     'reporter',
 }
 
-Config.UseCommand = true
+Config.UseoxPoly = false
+Config.UseTarget = 'ox' -- ox or qb
+Config.UseCommand = false
 
 Config.PolyData = {
     [1] = {

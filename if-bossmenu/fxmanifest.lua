@@ -26,9 +26,15 @@ files {
     'web/build/**/*',
 }
 
+dependencies {
+    'ox_lib',
+    'oxmysql'
+}
+
 escrow_ignore {
     'config.lua',
 	'client/client.lua',
     'client/utils.lua',
     'server/server.lua'
 }
+

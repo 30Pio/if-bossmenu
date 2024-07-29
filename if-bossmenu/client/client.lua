@@ -1,7 +1,7 @@
 if Config.Framework ~= 'qbcore' then
-    QBCore = exports['qb-core']:GetCoreObject()
-else
     ESX = exports['es_extended']:getSharedObject()
+else
+    QBCore = exports['qb-core']:GetCoreObject()
 end
 
 local names = {}
@@ -46,42 +46,124 @@ if Config.UseCommand then
         toggleNuiFrame(true)
     end)
 else
-    if Config.Framework == 'qbcore' then
+    if Config.UseoxPoly then
         for _, v in ipairs(Config.PolyData) do
             table.insert(names, v.name)
-            exports['qb-target']:AddBoxZone(v.name, vector3(v.coords.x, v.coords.y, v.coords.z), v.width, v.length, {
-                name = v.name,
-                heading = v.heading,
-                debugPoly = false,
-                minZ = v.minZ,
-                maxZ = v.maxZ,
-            }, {
-                options = {
-                    {
-                        type = "client",
-                        icon = "fas fa-user-tie",
-                        label = 'Bossmenu',
-                        action = function(entity)
-                            local returnValue = lib.callback.await('bossmenu:server:getAccounts', false,
-                                Config.Framework == 'qbcore' and
-                                QBCore.Functions.GetPlayerData().job.name or ESX.PlayerData.job.name)
-                            SendReactMessage('SendPlayerData', QBCore.Functions.GetPlayerData().job)
-                            SendReactMessage('SetAccountData', returnValue)
-                            toggleNuiFrame(true)
-                        end,
-                        canInteract = function(entity)
+            lib.zones.box({
+                coords = v.coords,
+                size = { x = v.width, y = v.length, z = 1.0 },
+                rotation = v.heading,
+                debug = false,
+                onEnter = function()
+                    lib.showTextUI("Press E to Open Bossmenu")
+                end,
+                onExit = function()
+                    lib.hideTextUI()
+                end,
+                inside = function()
+                    if IsControlJustPressed(0, 38) then
+                        if Config.Framework == 'qbcore' then
                             if not QBCore.Functions.GetPlayerData().job.isboss then
                                 QBCore.Functions.Notify('You are not the boss of this company', 'error')
-                                return false
-                            else
-                                return true
+                                return
                             end
-                        end,
-                        job = v.job
-                    }
-                },
-                distance = 2.5,
+                        else
+                            if not ESX.PlayerData.job.grade_name == 'boss' then
+                                ESX.ShowNotification('You are not the boss of this company')
+                                return
+                            end
+                        end
+                        local arr = {}
+                        if Config.Framework == 'esx' then
+                            arr = {
+                                type = 'none',
+                                name = ESX.PlayerData.job.name,
+                                isboss = ESX.PlayerData.job.grade_name == 'boss' and true or false,
+                                label = ESX.PlayerData.job.label,
+                                onduty = ESX.PlayerData.job.onduty and true or false,
+                                grade = {
+                                    level = ESX.PlayerData.job.grade,
+                                    name = ESX.PlayerData.job.name,
+                                    payment = 0,
+                                    isboss = ESX.PlayerData.job.grade_name == 'boss' and true or false,
+                                },
+                            }
+                        end
+                        local returnValue = lib.callback.await('bossmenu:server:getAccounts', 500,
+                            Config.Framework == 'qbcore' and QBCore.Functions.GetPlayerData().job.name or
+                            ESX.PlayerData.job.name)
+                        SendReactMessage('SendPlayerData',
+                            Config.Framework == 'esx' and arr or QBCore.Functions.GetPlayerData().job)
+                        SendReactMessage('SetAccountData', returnValue)
+                        toggleNuiFrame(true)
+                    end
+                end
             })
+        end
+    else
+        if Config.UseTarget == 'qb' then
+            for _, v in ipairs(Config.PolyData) do
+                table.insert(names, v.name)
+                exports['qb-target']:AddBoxZone(v.name, vector3(v.coords.x, v.coords.y, v.coords.z), v.width,
+                    v.length, {
+                        name = v.name,
+                        heading = v.heading,
+                        debugPoly = false,
+                        minZ = v.minZ,
+                        maxZ = v.maxZ,
+                    }, {
+                        options = {
+                            {
+                                type = "client",
+                                icon = "fas fa-user-tie",
+                                label = 'Bossmenu',
+                                action = function(entity)
+                                    local returnValue = lib.callback.await('bossmenu:server:getAccounts', false,
+                                        Config.Framework == 'qbcore' and
+                                        QBCore.Functions.GetPlayerData().job.name or ESX.PlayerData.job.name)
+                                    SendReactMessage('SendPlayerData', QBCore.Functions.GetPlayerData().job)
+                                    SendReactMessage('SetAccountData', returnValue)
+                                    toggleNuiFrame(true)
+                                end,
+                                canInteract = function(entity)
+                                    if not QBCore.Functions.GetPlayerData().job.isboss then
+                                        QBCore.Functions.Notify('You are not the boss of this company', 'error')
+                                        return false
+                                    else
+                                        return true
+                                    end
+                                end,
+                                job = v.job
+                            }
+                        },
+                        distance = 2.5,
+                    })
+            end
+        elseif Config.UseTarget == 'ox' then
+            for _, v in ipairs(Config.PolyData) do
+                table.insert(names, v.name)
+                exports.ox_target:addBoxZone({
+                    coords = v.coords,
+                    size = { x = v.width, y = v.length, z = 1.0 },
+                    rotation = v.heading,
+                    options = {
+                        {
+                            label = 'Bossmenu',
+                            icon = 'fas fa-user-tie',
+                            distance = 2.5,
+                            onSelect = function ()
+                                local returnValue = lib.callback.await('bossmenu:server:getAccounts', false,
+                                    Config.Framework == 'qbcore' and
+                                    QBCore.Functions.GetPlayerData().job.name or ESX.PlayerData.job.name)
+                                SendReactMessage('SendPlayerData', QBCore.Functions.GetPlayerData().job)
+                                SendReactMessage('SetAccountData', returnValue)
+                                toggleNuiFrame(true)
+                            end
+                        }
+                    }
+                })
+            end
+            
         end
     end
 end

@@ -1,7 +1,11 @@
-if Config.Framework ~= 'qbcore' then
+local selectedFramework = Config.Framework:lower()
+if selectedFramework == 'esx' then
     ESX = exports['es_extended']:getSharedObject()
-else
+elseif selectedFramework == 'qb' or selectedFramework == 'qbcore' then
     QBCore = exports['qb-core']:GetCoreObject()
+else
+    print('[ERROR] INVALID SELECTED FRAMEWORK! PLS, CHECK config.lua FILE!')
+    return
 end
 
 local names = {}
@@ -10,44 +14,46 @@ local function toggleNuiFrame(shouldShow)
     SendReactMessage('setVisible', shouldShow)
 end
 
-if Config.UseCommand then
-    RegisterCommand('bossmenu', function()
-        if Config.Framework == 'qbcore' then
+if not Config.MenuInteraction or Config.MenuInteraction.type == 'command' or Config.MenuInteraction.type == '' then
+    local commandName = Config.MenuInteraction.commandName or 'bossmenu'
+    RegisterCommand(commandName, function()
+        if QBCore then
             if not QBCore.Functions.GetPlayerData().job.isboss then
                 QBCore.Functions.Notify('You are not the boss of this company', 'error')
                 return
             end
         else
-            if not ESX.PlayerData.job.grade_name == 'boss' then
+            if not ESX.GetPlayerData().job.grade_name == 'boss' then
                 ESX.ShowNotification('You are not the boss of this company')
                 return
             end
         end
         local arr = {}
-        if Config.Framework == 'esx' then
+        if ESX then
+            local playerData = ESX.GetPlayerData()
             arr = {
                 type = 'none',
-                name = ESX.PlayerData.job.name,
-                isboss = ESX.PlayerData.job.grade_name == 'boss' and true or false,
-                label = ESX.PlayerData.job.label,
-                onduty = ESX.PlayerData.job.onduty and true or false,
+                name = playerData.job.name,
+                isboss = playerData.job.grade_name == 'boss' and true or false,
+                label = playerData.job.label,
+                onduty = playerData.job.onduty and true or false,
                 grade = {
-                    level = ESX.PlayerData.job.grade,
-                    name = ESX.PlayerData.job.name,
+                    level = playerData.job.grade,
+                    name = playerData.job.name,
                     payment = 0,
-                    isboss = ESX.PlayerData.job.grade_name == 'boss' and true or false,
+                    isboss = playerData.job.grade_name == 'boss' and true or false,
                 },
             }
         end
         local returnValue = lib.callback.await('bossmenu:server:getAccounts', 500,
-            Config.Framework == 'qbcore' and QBCore.Functions.GetPlayerData().job.name or ESX.PlayerData.job.name)
-        SendReactMessage('SendPlayerData', Config.Framework == 'esx' and arr or QBCore.Functions.GetPlayerData().job)
+            QBCore and QBCore.Functions.GetPlayerData().job.name or ESX.GetPlayerData().job.name)
+        SendReactMessage('SendPlayerData', ESX and arr or QBCore.Functions.GetPlayerData().job)
         SendReactMessage('SetAccountData', returnValue)
         toggleNuiFrame(true)
     end)
 else
-    if Config.UseoxPoly then
-        for _, v in ipairs(Config.PolyData) do
+    if Config.MenuInteraction.type == 'poly' then
+        for _, v in ipairs(Config.MenuLocations) do
             table.insert(names, v.name)
             lib.zones.box({
                 coords = v.coords,
@@ -62,38 +68,41 @@ else
                 end,
                 inside = function()
                     if IsControlJustPressed(0, 38) then
-                        if Config.Framework == 'qbcore' then
-                            if not QBCore.Functions.GetPlayerData().job.isboss then
+                        if QBCore then
+                            local playerJob = QBCore.Functions.GetPlayerData().job
+                            if (v.minGrade and playerJob.grade.level < v.minGrade) or (not playerJob.isboss) then
                                 QBCore.Functions.Notify('You are not the boss of this company', 'error')
                                 return
                             end
                         else
-                            if not ESX.PlayerData.job.grade_name == 'boss' then
+                            local playerJob = ESX.GetPlayerData().job
+                            if (v.minGrade and playerJob.grade < v.minGrade) or (not playerJob.grade_name == 'boss') then
                                 ESX.ShowNotification('You are not the boss of this company')
                                 return
                             end
                         end
                         local arr = {}
-                        if Config.Framework == 'esx' then
+                        if ESX then
+                            local playerData = ESX.GetPlayerData()
                             arr = {
                                 type = 'none',
-                                name = ESX.PlayerData.job.name,
-                                isboss = ESX.PlayerData.job.grade_name == 'boss' and true or false,
-                                label = ESX.PlayerData.job.label,
-                                onduty = ESX.PlayerData.job.onduty and true or false,
+                                name = playerData.job.name,
+                                isboss = playerData.job.grade_name == 'boss' and true or false,
+                                label = playerData.job.label,
+                                onduty = playerData.job.onduty and true or false,
                                 grade = {
-                                    level = ESX.PlayerData.job.grade,
-                                    name = ESX.PlayerData.job.name,
+                                    level = playerData.job.grade,
+                                    name = playerData.job.name,
                                     payment = 0,
-                                    isboss = ESX.PlayerData.job.grade_name == 'boss' and true or false,
+                                    isboss = playerData.job.grade_name == 'boss' and true or false,
                                 },
                             }
                         end
                         local returnValue = lib.callback.await('bossmenu:server:getAccounts', 500,
-                            Config.Framework == 'qbcore' and QBCore.Functions.GetPlayerData().job.name or
-                            ESX.PlayerData.job.name)
+                            QBCore and QBCore.Functions.GetPlayerData().job.name or
+                            ESX.GetPlayerData().job.name)
                         SendReactMessage('SendPlayerData',
-                            Config.Framework == 'esx' and arr or QBCore.Functions.GetPlayerData().job)
+                            ESX and arr or QBCore.Functions.GetPlayerData().job)
                         SendReactMessage('SetAccountData', returnValue)
                         toggleNuiFrame(true)
                     end
@@ -101,8 +110,9 @@ else
             })
         end
     else
-        if Config.UseTarget == 'qb' then
-            for _, v in ipairs(Config.PolyData) do
+        local targetResorceName = Config.MenuInteraction.targetResourceName
+        if targetResorceName == 'qb' or targetResorceName == 'qb-target' then
+            for _, v in ipairs(Config.MenuLocations) do
                 table.insert(names, v.name)
                 exports['qb-target']:AddBoxZone(v.name, vector3(v.coords.x, v.coords.y, v.coords.z), v.width,
                     v.length, {
@@ -119,15 +129,14 @@ else
                                 label = 'Bossmenu',
                                 action = function(entity)
                                     local returnValue = lib.callback.await('bossmenu:server:getAccounts', false,
-                                        Config.Framework == 'qbcore' and
-                                        QBCore.Functions.GetPlayerData().job.name or ESX.PlayerData.job.name)
+                                        QBCore.Functions.GetPlayerData().job.name)
                                     SendReactMessage('SendPlayerData', QBCore.Functions.GetPlayerData().job)
                                     SendReactMessage('SetAccountData', returnValue)
                                     toggleNuiFrame(true)
                                 end,
                                 canInteract = function(entity)
-                                    if not QBCore.Functions.GetPlayerData().job.isboss then
-                                        QBCore.Functions.Notify('You are not the boss of this company', 'error')
+                                    local playerJob = QBCore.Functions.GetPlayerData().job
+                                    if (v.minGrade and playerJob.grade.level < v.minGrade) or (not playerJob.isboss) then
                                         return false
                                     else
                                         return true
@@ -139,8 +148,8 @@ else
                         distance = 2.5,
                     })
             end
-        elseif Config.UseTarget == 'ox' then
-            for _, v in ipairs(Config.PolyData) do
+        elseif targetResorceName == 'ox' or targetResorceName == 'ox_target' then
+            for _, v in ipairs(Config.MenuLocations) do
                 table.insert(names, v.name)
                 exports.ox_target:addBoxZone({
                     coords = v.coords,
@@ -151,11 +160,43 @@ else
                             label = 'Bossmenu',
                             icon = 'fas fa-user-tie',
                             distance = 2.5,
-                            onSelect = function ()
+                            groups = v.job,
+                            canInteract = function()
+                                if QBCore then
+                                    local playerJob = QBCore.Functions.GetPlayerData().job
+                                    if (v.minGrade and playerJob.grade.level >= v.minGrade) or (playerJob.isboss) then
+                                        return true
+                                    end
+                                else
+                                    local playerJob = ESX.GetPlayerData().job
+                                    if (v.minGrade and playerJob.grade >= v.minGrade) or (playerJob.grade_name == 'boss') then
+                                        return true
+                                    end
+                                end
+                                return false
+                            end,
+                            onSelect = function()
                                 local returnValue = lib.callback.await('bossmenu:server:getAccounts', false,
-                                    Config.Framework == 'qbcore' and
-                                    QBCore.Functions.GetPlayerData().job.name or ESX.PlayerData.job.name)
-                                SendReactMessage('SendPlayerData', QBCore.Functions.GetPlayerData().job)
+                                    QBCore and
+                                    QBCore.Functions.GetPlayerData().job.name or ESX.GetPlayerData().job.name)
+                                local arr = {}
+                                if ESX then
+                                    local playerData = ESX.GetPlayerData()
+                                    arr = {
+                                        type = 'none',
+                                        name = playerData.job.name,
+                                        isboss = playerData.job.grade_name == 'boss' and true or false,
+                                        label = playerData.job.label,
+                                        onduty = playerData.job.onduty and true or false,
+                                        grade = {
+                                            level = playerData.job.grade,
+                                            name = playerData.job.name,
+                                            payment = 0,
+                                            isboss = playerData.job.grade_name == 'boss' and true or false,
+                                        },
+                                    }
+                                end
+                                SendReactMessage('SendPlayerData', ESX and arr or QBCore.Functions.GetPlayerData().job)
                                 SendReactMessage('SetAccountData', returnValue)
                                 toggleNuiFrame(true)
                             end
@@ -163,27 +204,43 @@ else
                     }
                 })
             end
-            
         end
     end
 end
 
 ---Net Events
 RegisterNetEvent('bossmenu:client:refreshNuiAccount', function()
-    local returnValue = lib.callback.await('bossmenu:server:getAccounts', false, Config.Framework == 'qbcore' and
-        QBCore.Functions.GetPlayerData().job.name or ESX.PlayerData.job.name)
+    local returnValue = lib.callback.await('bossmenu:server:getAccounts', false, QBCore and
+        QBCore.Functions.GetPlayerData().job.name or ESX.GetPlayerData().job.name)
     SendReactMessage('SetAccountData', returnValue)
 end)
 
 RegisterNetEvent('bossmenu:client:refreshNuiPlayers', function(data)
-    local employees = lib.callback.await('bossmenu:server:GetEmployees', 1000, Config.Framework == 'qbcore' and
-        QBCore.Functions.GetPlayerData().job.name or ESX.PlayerData.job.name)
+    local employees = lib.callback.await('bossmenu:server:GetEmployees', 1000, QBCore and
+        QBCore.Functions.GetPlayerData().job.name or ESX.GetPlayerData().job.name)
     SendReactMessage('SetEmployees', employees)
 end)
 
 RegisterNetEvent('bossmenu:client:showBills', function(data)
-    local Player = QBCore.Functions.GetPlayerData().money
-    SendReactMessage('SetBills', { data = data, pdata = Player })
+    local pdata = {
+        cash = 0,
+        bank = 0,
+        crypto = 0
+    }
+    if ESX then
+        for _, account in pairs(ESX.GetPlayerData().accounts) do
+            if account.name == "bank" then
+                pdata.bank = account.money
+            elseif account.name == "money" then
+                pdata.cash = account.money
+            elseif account.name == "crypto" then
+                pdata.crypto = account.money
+            end
+        end
+    elseif QBCore then
+        pdata = QBCore.Functions.GetPlayerData().money
+    end
+    SendReactMessage('SetBills', { data = data, pdata = pdata })
     toggleNuiFrame(true)
 end)
 ---Nui Callbacks
@@ -193,7 +250,6 @@ RegisterNuiCallback('hideFrame', function(_, cb)
 end)
 
 RegisterNuiCallback('withdraw', function(data, cb)
-    print(json.encode(data))
     local returnValue = lib.callback.await('bossmenu:server:withdraw', 500, data)
     if returnValue then
         TriggerEvent('bossmenu:client:refreshNuiAccount')
@@ -202,7 +258,6 @@ RegisterNuiCallback('withdraw', function(data, cb)
 end)
 
 RegisterNuiCallback('deposit', function(data, cb)
-    print(json.encode(data))
     local returnValue = lib.callback.await('bossmenu:server:deposit', 500, data)
     if returnValue then
         TriggerEvent('bossmenu:client:refreshNuiAccount')
@@ -216,8 +271,8 @@ RegisterNuiCallback('get:timestamps', function(data, cb)
 end)
 
 RegisterNuiCallback('downGrade', function(data, cb)
-    local joblevel = Config.Framework == 'qbcore' and QBCore.Functions.GetPlayerData().job.grade.level or
-        ESX.PlayerData.job.grade
+    local joblevel = QBCore and QBCore.Functions.GetPlayerData().job.grade.level or
+        ESX.GetPlayerData().job.grade
     local returnValue = lib.callback.await('bossmenu:updatePlayer2', false, { cid = data, grade = joblevel - 1 })
     if returnValue then
         TriggerEvent('bossmenu:client:refreshNuiPlayers')
@@ -226,8 +281,8 @@ RegisterNuiCallback('downGrade', function(data, cb)
 end)
 
 RegisterNuiCallback('upGrade', function(data, cb)
-    local joblevel = Config.Framework == 'qbcore' and QBCore.Functions.GetPlayerData().job.grade.level or
-        ESX.PlayerData.job.grade
+    local joblevel = QBCore and QBCore.Functions.GetPlayerData().job.grade.level or
+        ESX.GetPlayerData().job.grade
     local returnValue = lib.callback.await('bossmenu:updatePlayer', false, { cid = data, grade = joblevel + 1 })
     if returnValue then
         TriggerEvent('bossmenu:client:refreshNuiPlayers')
@@ -244,9 +299,9 @@ RegisterNuiCallback('fireEmployee', function(data, cb)
 end)
 
 RegisterNuiCallback('GetCurrentJobranks', function(data, cb)
-    local JobsRank = Config.Framework == 'qbcore' and
+    local JobsRank = QBCore and
         QBCore.Shared.Jobs[QBCore.Functions.GetPlayerData().job.name].grades or
-        lib.callback.await('getEsxjobGrades', false, ESX.PlayerData.job.name)
+        lib.callback.await('getEsxjobGrades', false, ESX.GetPlayerData().job.name)
     print(json.encode(JobsRank, { indent = true }))
     cb(JobsRank)
 end)
@@ -266,8 +321,8 @@ RegisterNuiCallback('SetRank', function(data, cb)
 end)
 
 RegisterNuiCallback('getApplicationOfjob', function(_, cb)
-    local returnValue = lib.callback.await('bossmenu:server:GetApplication', false, Config.Framework == 'qbcore' and
-        QBCore.Functions.GetPlayerData().job.name or ESX.PlayerData.job.name)
+    local returnValue = lib.callback.await('bossmenu:server:GetApplication', false, QBCore and
+        QBCore.Functions.GetPlayerData().job.name or ESX.GetPlayerData().job.name)
     if returnValue then
         cb(returnValue)
     end
@@ -290,9 +345,26 @@ end)
 
 RegisterNuiCallback('GetBills', function(data, cb)
     local returnValue = lib.callback.await('bossmenu:server:getCompanybills', 500)
-    local Player = QBCore.Functions.GetPlayerData().money
+    local pdata = {
+        cash = 0,
+        bank = 0,
+        crypto = 0
+    }
+    if ESX then
+        for _, account in pairs(ESX.GetPlayerData().accounts) do
+            if account.name == "bank" then
+                pdata.bank = account.money
+            elseif account.name == "money" then
+                pdata.cash = account.money
+            elseif account.name == "crypto" then
+                pdata.crypto = account.money
+            end
+        end
+    elseif QBCore then
+        pdata = QBCore.Functions.GetPlayerData().money
+    end
     Wait(100)
-    cb({ data = returnValue, pdata = Player })
+    cb({ data = returnValue, pdata = pdata })
 end)
 
 RegisterNuiCallback('PayBill', function(data, cb)
@@ -305,7 +377,9 @@ end)
 AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then
         for _, v in pairs(names) do
-            exports['qb-target']:RemoveZone(v)
+            if Config.UseTarget == 'qb' then
+                exports['qb-target']:RemoveZone(v)
+            end
         end
     end
 end)

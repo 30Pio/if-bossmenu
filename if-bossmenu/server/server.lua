@@ -1,11 +1,15 @@
-if Config.Framework ~= 'qbcore' then
+local selectedFramework = Config.Framework:lower()
+if selectedFramework == 'esx' then
     ESX = exports['es_extended']:getSharedObject()
-else
+elseif selectedFramework == 'qb' or selectedFramework == 'qbcore' then
     QBCore = exports['qb-core']:GetCoreObject()
+else
+    print('[ERROR] INVALID SELECTED FRAMEWORK! PLS, CHECK config.lua FILE!')
+    return
 end
 
 function Notify(source, message, type)
-    if Config.Framework == 'esx' then
+    if ESX then
         TriggerClientEvent('esx:showNotification', source, message)
     else
         TriggerClientEvent('QBCore:Notify', source, message, type)
@@ -21,7 +25,7 @@ MySQL.ready(function()
         "INDEX `id` (`id`) USING BTREE" ..
         ")COLLATE='utf8mb3_general_ci' ENGINE=InnoDB;"
         , {}, function()
-            if Config.Framework == 'esx' then
+            if ESX then
                 MySQL.query('SELECT name FROM jobs', {}, function(result)
                     local caller = result
                     for k, v in pairs(caller) do
@@ -85,7 +89,7 @@ end)
 
 lib.callback.register('bossmenu:server:withdraw', function(source, data)
     local job
-    if Config.Framework == 'esx' then
+    if ESX then
         local PlayerData = ESX.GetPlayerFromId(source).job.grade_name
         job = PlayerData == "boss"
     else
@@ -93,8 +97,7 @@ lib.callback.register('bossmenu:server:withdraw', function(source, data)
         job = Player.PlayerData.job.isboss
     end
     if not job then
-        cb(false)
-        return
+        return false
     end
     MySQL.query('SELECT * FROM bossmenu_jobsdata WHERE job = ?', { data.job }, function(result)
         local caller = result[1]
@@ -103,10 +106,11 @@ lib.callback.register('bossmenu:server:withdraw', function(source, data)
                 ['@job'] = data.job,
                 ['@amount'] = data.amount
             }, function()
-                if Config.Framework == 'esx' then
+                if ESX then
                     local xPlayer = ESX.GetPlayerFromId(source)
                     xPlayer.addMoney(data.amount)
                 else
+                    local Player = QBCore.Functions.GetPlayer(source)
                     Player.Functions.AddMoney('bank', data.amount, 'bossmenu-withdraw')
                 end
             end)
@@ -121,7 +125,7 @@ end)
 
 lib.callback.register('bossmenu:server:deposit', function(source, data)
     local job
-    if Config.Framework == 'esx' then
+    if ESX then
         local PlayerData = ESX.GetPlayerFromId(source).job.grade_name
         job = PlayerData == "boss"
     else
@@ -129,8 +133,8 @@ lib.callback.register('bossmenu:server:deposit', function(source, data)
         job = Player.PlayerData.job.isboss
     end
     if job then
-        if Config.Framework == 'qbcore' then
-            if Player.Functions.RemoveMoney('bank', data.amount, 'bossmenu-deposit') then
+        if QBCore then
+            if QBCore.Functions.GetPlayer(source).Functions.RemoveMoney('bank', data.amount, 'bossmenu-deposit') then
                 local variable = MySQL.single.await("SELECT money FROM bossmenu_jobsdata WHERE job = ?", { data.job })
                 local bossmoney = variable.money + data.amount
                 MySQL.update('UPDATE bossmenu_jobsdata SET money = ? WHERE job = ?', { bossmoney, data.job })
@@ -153,7 +157,7 @@ end)
 lib.callback.register('bossmenu:server:GetEmployees', function(source, jobname)
     local src = source
     local job
-    if Config.Framework == 'esx' then
+    if ESX then
         local PlayerData = ESX.GetPlayerFromId(src).job.grade_name
         job = PlayerData == "boss"
     else
@@ -161,12 +165,12 @@ lib.callback.register('bossmenu:server:GetEmployees', function(source, jobname)
         job = Player.PlayerData.job.isboss
     end
     if not job then
-        ExploitBan(src, 'GetEmployees Exploiting')
+        print('[WARNING] GetEmployees Exploiting coming from source: ' .. src)
         return false
     end
 
     local employees = {}
-    if Config.Framework == 'qbcore' then
+    if QBCore then
         local players = MySQL.query.await("SELECT * FROM `players` WHERE `job` LIKE '%" .. jobname .. "%'", {})
         if players[1] ~= nil then
             for _, value in pairs(players) do
@@ -217,28 +221,31 @@ end)
 
 RegisterNetEvent('bossmenu:server:stash', function()
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    if not Player then return end
-    local playerJob = Player.PlayerData.job
-    if not playerJob.isboss then return end
-    local playerPed = GetPlayerPed(src)
-    local stashName = playerJob.name .. '-stash'
-    exports['qb-inventory']:OpenInventory(src, stashName, {
-        maxweight = 4000000,
-        slots = 25,
-    })
+    local FPLayer = ESX and ESX.GetPlayerFromId(src) or QBCore and QBCore.Functions.GetPlayer(src)
+    if not FPLayer then return end
+    local playerJob = ESX and FPLayer.job or QBCore and FPLayer.PlayerData.job
+    if (ESX and not playerJob.grade_name == 'boss') or (QBCore and not playerJob.isboss) then return end
+    if GetResourceState('qb-inventory'):find('start') then
+        exports['qb-inventory']:OpenInventory(src, playerJob.name .. '-stash', {
+            maxweight = 4000000,
+            slots = 25,
+        })
+    elseif GetResourceState('ox_inventory'):find('start') then
+        local stashName = ESX and ('society_' .. playerJob.name) or QBCore and (playerJob.name .. '-stash')
+        exports.ox_inventory:forceOpenInventory(src, 'stash', stashName)
+    end
 end)
 
 -- Grade Change
 lib.callback.register('bossmenu:updatePlayer2', function(source, data)
     local src = source
-    if Config.Framework == 'qbcore' then
+    if QBCore then
         local Player = QBCore.Functions.GetPlayer(src)
         local Employee = QBCore.Functions.GetPlayerByCitizenId(data.cid) or
             QBCore.Functions.GetOfflinePlayerByCitizenId(data.cid)
 
         if not Player.PlayerData.job.isboss then
-            ExploitBan(src, 'GradeUpdate Exploiting')
+            print('GradeUpdate Exploiting coming from Player Id: ' .. src)
             return false
         end
         if data.grade > Player.PlayerData.job.grade.level then
@@ -263,7 +270,7 @@ lib.callback.register('bossmenu:updatePlayer2', function(source, data)
         local Employee = ESX.GetPlayerFromIdentifier(data.cid)
 
         if not Player.job.grade_name == 'boss' then
-            ExploitBan(src, 'GradeUpdate Exploiting')
+            print('GradeUpdate Exploiting coming from Player Id: ' .. src)
             return false
         end
         if data.grade > Player.job.grade then
@@ -290,13 +297,13 @@ end)
 
 lib.callback.register('bossmenu:updatePlayer', function(source, data)
     local src = source
-    if Config.Framework == 'qbcore' then
+    if QBCore then
         local Player = QBCore.Functions.GetPlayer(src)
         local Employee = QBCore.Functions.GetPlayerByCitizenId(data.cid) or
             QBCore.Functions.GetOfflinePlayerByCitizenId(data.cid)
 
         if not Player.PlayerData.job.isboss then
-            ExploitBan(src, 'GradeUpdate Exploiting')
+            print('GradeUpdate Exploiting coming from Player Id: ' .. src)
             return false
         end
         if data.grade < Player.PlayerData.job.grade.level then
@@ -321,7 +328,7 @@ lib.callback.register('bossmenu:updatePlayer', function(source, data)
         local Employee = ESX.GetPlayerFromIdentifier(data.cid)
 
         if not Player.job.grade_name == 'boss' then
-            ExploitBan(src, 'GradeUpdate Exploiting')
+            print('GradeUpdate Exploiting coming from Player Id: ' .. src)
             return false
         end
         if data.grade < Player.job.grade then
@@ -348,13 +355,13 @@ end)
 -- Fire Employee
 lib.callback.register('bossmenu:server:FireEmployee', function(source, target)
     local src = source
-    if Config.Framework == 'qbcore' then
+    if QBCore then
         local Player = QBCore.Functions.GetPlayer(src)
         local Employee = QBCore.Functions.GetPlayerByCitizenId(target) or
             QBCore.Functions.GetOfflinePlayerByCitizenId(target)
 
         if not Player.PlayerData.job.isboss then
-            ExploitBan(src, 'FireEmployee Exploiting')
+            print('FireEmployee Exploiting coming from Player Id: ' .. src)
             return false
         end
 
@@ -390,7 +397,7 @@ lib.callback.register('bossmenu:server:FireEmployee', function(source, target)
         local Employee = ESX.GetPlayerFromIdentifier(target)
 
         if not Player.job.grade_name == 'boss' then
-            ExploitBan(src, 'FireEmployee Exploiting')
+            print('FireEmployee Exploiting coming from Player Id: ' .. src)
             return false
         end
 
@@ -421,13 +428,13 @@ end)
 
 lib.callback.register('bossmenu:server:setRank', function(source, target, rank)
     local src = source
-    if Config.Framework == 'qbcore' then
+    if QBCore then
         local Player = QBCore.Functions.GetPlayer(src)
         local Target = QBCore.Functions.GetPlayerByCitizenId(target) or
             QBCore.Functions.GetOfflinePlayerByCitizenId(target)
 
         if not Player.PlayerData.job.isboss then
-            ExploitBan(src, 'HireEmployee Exploiting')
+            print('HireEmployee Exploiting coming from Player Id: ' .. src)
             return false
         end
 
@@ -448,7 +455,7 @@ lib.callback.register('bossmenu:server:setRank', function(source, target, rank)
         local Target = ESX.GetPlayerFromIdentifier(target)
 
         if not Player.job.grade_name == 'boss' then
-            ExploitBan(src, 'HireEmployee Exploiting')
+            print('HireEmployee Exploiting coming from Player Id: ' .. src)
             return false
         end
 
@@ -463,13 +470,13 @@ end)
 -- Recruit Player
 RegisterNetEvent('bossmenu:server:HireEmployee', function(recruit)
     local src = source
-    if Config.Framework == 'qbcore' then
+    if QBCore then
         local Player = QBCore.Functions.GetPlayer(src)
         local Target = QBCore.Functions.GetPlayerByCitizenId(recruit.citizen) or
             QBCore.Functions.GetOfflinePlayerByCitizenId(recruit.citizen)
 
         if not Player.PlayerData.job.isboss then
-            ExploitBan(src, 'HireEmployee Exploiting')
+            print('HireEmployee Exploiting coming from Player Id: ' .. src)
             return
         end
 
@@ -495,7 +502,7 @@ RegisterNetEvent('bossmenu:server:HireEmployee', function(recruit)
         local Target = ESX.GetPlayerFromIdentifier(recruit.citizen)
 
         if not Player.job.grade_name == 'boss' then
-            ExploitBan(src, 'HireEmployee Exploiting')
+            print('HireEmployee Exploiting coming from Player Id: ' .. src)
             return
         end
 
@@ -527,17 +534,17 @@ lib.addCommand('apply', {
     }
 }, function(source, args, raw)
     local src = source
-    local Player = Config.Framework == 'qbcore' and QBCore.Functions.GetPlayer(src) or ESX.GetPlayerFromId(src)
+    local Player = QBCore and QBCore.Functions.GetPlayer(src) or ESX.GetPlayerFromId(src)
     local job = args.job
     local reason = string.sub(raw, string.len(args.job) + string.len(args.reason) + 3)
     reason = string.gsub(reason, "^%s+", "")
-    local gender = Config.Framework == 'qbcore' and Player.PlayerData.charinfo.gender or Player.variables.sex
+    local gender = QBCore and Player.PlayerData.charinfo.gender or Player.variables.sex
     if gender == 0 or gender == 'm' then
         gender = 'Male'
     else
         gender = 'Female'
     end
-    local name = Config.Framework == 'qbcore' and
+    local name = QBCore and
         Player.PlayerData.charinfo.firstname .. ' ' .. Player.PlayerData.charinfo.lastname or
         Player.variables.firstName .. ' ' .. Player.variables.lastName
     local date = os.date('%d-%m-%Y', os.time())
@@ -556,7 +563,7 @@ lib.addCommand('apply', {
     end
 
     MySQL.query('SELECT 1 FROM bossmenu_application WHERE job = ? AND citizenid = ?',
-        { job, Config.Framework == 'qbcore' and Player.PlayerData.citizenid or Player.identifier }, function(result)
+        { job, QBCore and Player.PlayerData.citizenid or Player.identifier }, function(result)
             if result[1] then
                 Notify(src, 'You have already applied for this job.', 'error')
             else
@@ -564,7 +571,7 @@ lib.addCommand('apply', {
                     'INSERT INTO bossmenu_application (job, citizenid, name, gender, date, reason) VALUES (?, ?, ?, ?, ?, ?)',
                     {
                         job,
-                        Config.Framework == 'qbcore' and Player.PlayerData.citizenid or Player.identifier,
+                        QBCore and Player.PlayerData.citizenid or Player.identifier,
                         name,
                         gender,
                         date,
@@ -606,8 +613,8 @@ lib.addCommand('bill', {
     }
 }, function(source, args, raw)
     local src = source
-    local Player = Config.Framework == 'qbcore' and QBCore.Functions.GetPlayer(src) or ESX.GetPlayerFromId(src)
-    local Target = Config.Framework == 'qbcore' and QBCore.Functions.GetPlayer(args.target) or
+    local Player = QBCore and QBCore.Functions.GetPlayer(src) or ESX.GetPlayerFromId(src)
+    local Target = QBCore and QBCore.Functions.GetPlayer(args.target) or
         ESX.GetPlayerFromId(args.target)
     local date = os.date('%d-%m-%Y', os.time())
     local billDate = os.date('%d-%m-%Y', os.time() + (30 * 24 * 60 * 60))
@@ -617,7 +624,7 @@ lib.addCommand('bill', {
     end
     local isRealJob = false
     for _, realJob in ipairs(Config.RealJob) do
-        if Config.Framework == 'qbcore' and Player.PlayerData.job.name or Player.job.name == realJob then
+        if QBCore and Player.PlayerData.job.name or Player.job.name == realJob then
             isRealJob = true
             break
         end
@@ -632,7 +639,7 @@ lib.addCommand('bill', {
         return
     end
 
-    if Config.Framework == 'qbcore' then
+    if QBCore then
         MySQL.insert(
             'INSERT INTO bossmenu_bills (job, rcdate, untildate, amount, toname, tocitizenid, fromname, fromcitizenid) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             {
@@ -660,7 +667,7 @@ lib.addCommand('bill', {
             })
     end
     Notify(src, 'Bill sent successfully.', 'success')
-    if Config.Framework == 'qbcore' then
+    if QBCore then
         TriggerClientEvent('QBCore:Notify', Target.PlayerData.source,
             'You have received a bill from ' ..
             Player.PlayerData.charinfo.firstname .. ' ' .. Player.PlayerData.charinfo.lastname .. '', 'success')
@@ -681,10 +688,10 @@ lib.addCommand('getbills', {
 }, function(source, args, raw)
     local type = args.type
     local src = source
-    local Player = Config.Framework == 'qbcore' and QBCore.Functions.GetPlayer(src) or ESX.GetPlayerFromId(src)
+    local Player = QBCore and QBCore.Functions.GetPlayer(src) or ESX.GetPlayerFromId(src)
     if type == 'personal' then
         MySQL.query('SELECT * FROM bossmenu_bills WHERE tocitizenid = ?',
-            { Config.Framework == 'qbcore' and Player.PlayerData.citizenid or Player.identifier },
+            { QBCore and Player.PlayerData.citizenid or Player.identifier },
             function(result)
                 if result[1] then
                     TriggerClientEvent('bossmenu:client:showBills', src, result)
@@ -693,7 +700,7 @@ lib.addCommand('getbills', {
                 end
             end)
     elseif type == 'company' then
-        if Config.Framework == 'esx' then
+        if ESX then
             if ESX.GetPlayerFromId(src).job.grade_name == 'boss' then
                 return
             end
@@ -714,8 +721,8 @@ end)
 
 lib.callback.register('bossmenu:server:getCompanybills', function(source)
     local src = source
-    local Player = Config.Framework == 'qbcore' and QBCore.Functions.GetPlayer(src) or ESX.GetPlayerFromId(src)
-    if Config.Framework == 'esx' then
+    local Player = QBCore and QBCore.Functions.GetPlayer(src) or ESX.GetPlayerFromId(src)
+    if ESX then
         if ESX.GetPlayerFromId(src).job.grade_name == 'boss' then
             return
         end
@@ -725,7 +732,7 @@ lib.callback.register('bossmenu:server:getCompanybills', function(source)
 
     local arr = {}
     MySQL.query('SELECT * FROM bossmenu_bills WHERE job = ?',
-        { Config.Framework == 'qbcore' and Player.PlayerData.job.name or Player.job.name }, function(result)
+        { QBCore and Player.PlayerData.job.name or Player.job.name }, function(result)
             if result[1] then
                 arr = result
             end
@@ -736,7 +743,7 @@ end)
 
 lib.callback.register('bossmenu:server:payBills', function(source, data)
     local src = source
-    if Config.Framework == 'qbcore' then
+    if QBCore then
         local Player = QBCore.Functions.GetPlayerByCitizenId(data.fromcitizenid) or
             QBCore.Functions.GetOfflinePlayerByCitizenId(data.fromcitizenid)
 

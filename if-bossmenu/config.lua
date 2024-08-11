@@ -1,6 +1,6 @@
 Config = Config or {}
 
-Config.Framework = 'qbcore' -- esx or qbcore
+Config.Framework = '' -- esx or qbcore
 
 Config.RealJob = {
     'police',
@@ -10,15 +10,18 @@ Config.RealJob = {
     'realestateagent',
     'cardealer',
     'banker',
-    'reporter',
+    'reporter'
 }
 
-Config.UseoxPoly = false
-Config.UseTarget = 'ox' -- ox or qb
-Config.UseCommand = false
+Config.MenuInteraction = {
+    type = 'target',                  -- 'command' or 'target' or 'poly'. 'command' = access using /bossmenu, 'target' access using target, 'poly' access using ox_lib Zones.
+    targetResourceName = 'ox_target', -- if using target, sets the resource. Suported: 'ox_target' or 'qb-target'
+    commandName = 'bossmenu'          -- if using command, sets the command.
+}
 
-Config.PolyData = {
-    [1] = {
+-- Interact menu locations (used for poly and target)
+Config.MenuLocations = {
+    {
         name = "bossmenu_1",
         heading = 12.0,
         debugPoly = true,
@@ -28,5 +31,6 @@ Config.PolyData = {
         length = 1.6,
         coords = vector3(441.81, -978.95, 30.69),
         job = 'police',
+        -- minGrade = 4 -- * optional, using it if you want to manually determine the minimum grade/level for opening the menu
     }
 }

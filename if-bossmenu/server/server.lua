@@ -428,6 +428,11 @@ end)
 
 lib.callback.register('bossmenu:server:setRank', function(source, target, rank)
     local src = source
+
+    if src == target then
+        Notify(src, 'You can\'t manage yourself!', 'error')
+        return false
+    end
     if QBCore then
         local Player = QBCore.Functions.GetPlayer(src)
         local Target = QBCore.Functions.GetPlayerByCitizenId(target) or
@@ -435,6 +440,10 @@ lib.callback.register('bossmenu:server:setRank', function(source, target, rank)
 
         if not Player.PlayerData.job.isboss then
             print('HireEmployee Exploiting coming from Player Id: ' .. src)
+            return false
+        end
+        if Player.PlayerData.citizenid == Target.PlayerData.citizenid then
+            Notify(src, 'You can\'t manage yourself!', 'error')
             return false
         end
 
@@ -456,6 +465,10 @@ lib.callback.register('bossmenu:server:setRank', function(source, target, rank)
 
         if not Player.job.grade_name == 'boss' then
             print('HireEmployee Exploiting coming from Player Id: ' .. src)
+            return false
+        end
+        if Player.identifier == Target.identifier then
+            Notify(src, 'You can\'t manage yourself!', 'error')
             return false
         end
 

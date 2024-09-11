@@ -15,7 +15,8 @@ export default function Main() {
       state.setLocation,
       state.setBillData,
     ]);
-  const [data, setData] = useState<any>([]);
+  /*const [data, setData] = useState<any>([]);
+  // Wt is that?
   const transformData = (timestamps: any) => {
     const timestampss = JSON.parse(timestamps.data);
     const transformedData = timestampss.map((timestamp: any) => ({
@@ -23,7 +24,7 @@ export default function Main() {
       Count: timestamp.jobcount,
     }));
     setData(transformedData.slice(0, 15));
-  };
+  };*/
   const [ranks, setRanks] = useState([]);
   const [manager, setManager] = useState<any>({});
   const [empSource, setEmpSource] = useState<any>("");
@@ -104,9 +105,10 @@ export default function Main() {
               className="button"
               onClick={() => {
                 setLocation("employee");
-                fetchNui("get:timestamps").then((data: any) => {
+                fetchNui("get:timestamps");
+                /*fetchNui("get:timestamps").then((data: any) => {
                   transformData(data);
-                });
+                });*/
               }}
             >
               Select
@@ -255,7 +257,7 @@ export default function Main() {
                 width: "100%",
               }}
             >
-              {employeeData.map((employee, index) => {
+              {employeeData && employeeData.map((employee, index) => {
                 return (
                   <div
                     style={{
@@ -743,7 +745,7 @@ export default function Main() {
                   border: "1px solid #FFFFFF",
                   borderRadius: "100px",
                 }}
-                onClick={() => {}}
+                onClick={() => { }}
               >
                 Gender : {hjob?.gender}
               </div>
@@ -765,7 +767,7 @@ export default function Main() {
                   border: "1px solid #FFFFFF",
                   borderRadius: "100px",
                 }}
-                onClick={() => {}}
+                onClick={() => { }}
               >
                 ID : {hjob?.id}
               </div>
@@ -787,7 +789,7 @@ export default function Main() {
                   border: "1px solid #FFFFFF",
                   borderRadius: "100px",
                 }}
-                onClick={() => {}}
+                onClick={() => { }}
               >
                 Date : {hjob?.date}
               </div>
@@ -809,7 +811,7 @@ export default function Main() {
                   border: "1px solid #FFFFFF",
                   borderRadius: "100px",
                 }}
-                onClick={() => {}}
+                onClick={() => { }}
               >
                 Citizen ID : {hjob?.citizenid}
               </div>

@@ -111,6 +111,7 @@ else
         end
     else
         local targetResorceName = Config.MenuInteraction.targetResourceName
+        local TARGET_ICON <const> = "fas fa-user-tie"
         if targetResorceName == 'qb' or targetResorceName == 'qb-target' then
             for _, v in ipairs(Config.MenuLocations) do
                 table.insert(names, v.name)
@@ -125,7 +126,7 @@ else
                         options = {
                             {
                                 type = "client",
-                                icon = "fas fa-user-tie",
+                                icon = TARGET_ICON,
                                 label = 'Bossmenu',
                                 action = function(entity)
                                     local returnValue = lib.callback.await('bossmenu:server:getAccounts', false,
@@ -158,7 +159,7 @@ else
                     options = {
                         {
                             label = 'Bossmenu',
-                            icon = 'fas fa-user-tie',
+                            icon = TARGET_ICON,
                             distance = 2.5,
                             groups = v.job,
                             canInteract = function()

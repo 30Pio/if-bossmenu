@@ -3,7 +3,7 @@ game "gta5"
 
 author 'IF Developments' -- https://discord.gg/if-developments
 description 'Boss Menu & Invoices - FREE'
-version '1.1'
+version '1.1.1'
 
 lua54 'yes'
 

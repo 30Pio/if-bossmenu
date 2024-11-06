@@ -61,7 +61,7 @@ else
                 rotation = v.heading,
                 debug = false,
                 onEnter = function()
-                    lib.showTextUI("Press E to Open Bossmenu")
+                    lib.showTextUI("Press [E] to Open Bossmenu")
                 end,
                 onExit = function()
                     lib.hideTextUI()
@@ -70,13 +70,13 @@ else
                     if IsControlJustPressed(0, 38) then
                         if QBCore then
                             local playerJob = QBCore.Functions.GetPlayerData().job
-                            if (v.minGrade and playerJob.grade.level < v.minGrade) or (not playerJob.isboss) then
+                            if (v.minGrade and playerJob.grade.level < v.minGrade) or (not v.minGrade and not playerJob.isboss) then
                                 QBCore.Functions.Notify('You are not the boss of this company', 'error')
                                 return
                             end
                         else
                             local playerJob = ESX.GetPlayerData().job
-                            if (v.minGrade and playerJob.grade < v.minGrade) or (not playerJob.grade_name == 'boss') then
+                            if (v.minGrade and playerJob.grade < v.minGrade) or (not v.minGrade and playerJob.grade_name ~= 'boss') then
                                 ESX.ShowNotification('You are not the boss of this company')
                                 return
                             end
@@ -137,11 +137,10 @@ else
                                 end,
                                 canInteract = function(entity)
                                     local playerJob = QBCore.Functions.GetPlayerData().job
-                                    if (v.minGrade and playerJob.grade.level < v.minGrade) or (not playerJob.isboss) then
+                                    if (v.minGrade and playerJob.grade.level < v.minGrade) or (not v.minGrade and not playerJob.isboss) then
                                         return false
-                                    else
-                                        return true
                                     end
+                                    return true
                                 end,
                                 job = v.job
                             }
@@ -165,16 +164,16 @@ else
                             canInteract = function()
                                 if QBCore then
                                     local playerJob = QBCore.Functions.GetPlayerData().job
-                                    if (v.minGrade and playerJob.grade.level >= v.minGrade) or (playerJob.isboss) then
-                                        return true
+                                    if (v.minGrade and playerJob.grade.level < v.minGrade) or (not v.minGrade and not playerJob.isboss) then
+                                        return false
                                     end
                                 else
                                     local playerJob = ESX.GetPlayerData().job
-                                    if (v.minGrade and playerJob.grade >= v.minGrade) or (playerJob.grade_name == 'boss') then
-                                        return true
+                                    if (v.minGrade and playerJob.grade < v.minGrade) or (not v.minGrade and playerJob.grade_name ~= 'boss') then
+                                        return false
                                     end
                                 end
-                                return false
+                                return true
                             end,
                             onSelect = function()
                                 local returnValue = lib.callback.await('bossmenu:server:getAccounts', false,

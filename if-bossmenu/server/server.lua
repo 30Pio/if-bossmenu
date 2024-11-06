@@ -233,6 +233,9 @@ RegisterNetEvent('bossmenu:server:stash', function()
     elseif GetResourceState('ox_inventory'):find('start') then
         local stashName = ESX and ('society_' .. playerJob.name) or QBCore and (playerJob.name .. '-stash')
         exports.ox_inventory:forceOpenInventory(src, 'stash', stashName)
+    elseif GetResourceState('inventory'):find('start') then -- Chezza Iventory
+        TriggerClientEvent('inventory:openStorage', source, "Locker", "locker-" .. playerJob.name, 100, 500,
+            playerJob.name)
     end
 end)
 
